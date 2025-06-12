@@ -1,35 +1,28 @@
-<?
-include("config.php");
-$scriptname= pathinfo(__FILE__,PATHINFO_BASENAME);
-$logname =  pathinfo(__FILE__,PATHINFO_FILENAME).".log";
-require ROOTPATH . '/xcore/smarty/Smarty.class.php';
-$smarty = new Smarty;
+<?php
+require_once __DIR__ . '/config.php';
+require_once ROOTPATH . '/xcore/smarty/Smarty.class.php';
+
+$scriptname = pathinfo(__FILE__, PATHINFO_BASENAME);
+$logname    = pathinfo(__FILE__, PATHINFO_FILENAME) . '.log';
+
+$smarty = new Smarty();
 $smarty->compile_check = true;
-// $smarty->debugging = false;
-// $smarty->use_sub_dirs = false;
-// $smarty->caching = false;
-// $smarty->compile_check = true;
-$action = $_GET['action'];
+
+$allowed = ['view', 'category', 'category_cache', 'submit'];
+$action  = isset($_GET['action']) && in_array($_GET['action'], $allowed) ? $_GET['action'] : 'category';
+
 switch ($action) {
     case 'view':
-        include("action/view.php");
-		exit();
-        break;
-    case 'category':
-        include("action/category.php");
-		exit();
+        require 'action/view.php';
         break;
     case 'category_cache':
-        include("action/category_cache.php");
-		exit();
+        require 'action/category_cache.php';
         break;
     case 'submit':
-        include("action/submit.php");
-		exit();
+        require 'action/submit.php';
         break;
-	case '':
-        include("action/category.php");
-		exit();
+    case 'category':
+    default:
+        require 'action/category.php';
         break;
-	
 }
