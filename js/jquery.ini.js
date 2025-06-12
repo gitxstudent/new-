@@ -1,0 +1,10 @@
+jQuery(document).ready(function(){
+	if(jQuery.cookie('seevn_xtab')){
+		xtab(jQuery.cookie('seevn_xtab'),'menu');
+	}else{
+		xtab('menuacc_1','menu');
+	}
+	if($.cookie('seevn_translate')){
+		seevn_translate($.cookie('seevn_translate'))
+	}
+});
