@@ -1,0 +1,1 @@
+<?phpfunction dtinews_com($url){		$data = xcurl($url,"","","","FF");		$html = str_get_html($data);		foreach($html->find('a') as $e) $e->outertext = '';		$xata['data'] = $html->find('.content_article',0)->innertext;		$xata['title'] = $html->find('.name_article',0)->innertext;		return $xata;	}
