@@ -1,33 +1,43 @@
 <?php
-$cid =  empty($_GET['cid'])?1:intval($_GET['cid']);
+$cid = isset($_GET['cid']) ? (int)$_GET['cid'] : 1;
 $smarty->caching = 0;
-$smarty->cache_lifetime = 0; 
-$db->connect(db_hostname,db_username,db_password,db_database);
-$db->query("SET NAMES 'utf8';");
 $perpage = 30;
-$curpage = empty($_GET['page'])?1:$_GET['page'];
-$pages = (($curpage-1) * $perpage);
-$catalog = $db->fetch_first("SELECT * FROM `". db_tablepre ."catalog` WHERE `catalog_id` = '$cid' LIMIT 0,1;");
-$where = "WHERE title_cid=$cid";
-$querys = "SELECT * FROM `". db_tablepre ."title` $where ORDER BY `title_date` DESC LIMIT $pages,$perpage;";
-$query = $db->query($querys);
-$total = $db->num_rows($db->query("SELECT * FROM `". db_tablepre ."title` $where"));
-$catalog['multipage'] = xgateway::multi($total, $perpage, $curpage,'/');
-$catalog['multipage'] = preg_replace("|\/\?page=(\d+)|",$site_fullpath."/c$cid-p\\1.html\"",$catalog['multipage']);;
-$catalog['multipage'] = str_replace("<a ","<a style='border:1px solid;display:block;float:left;font-weight:bold;margin:3px;padding:0 3px 0 6px;text-decoration:none;' ",$catalog['multipage']);;
-$catalog['multipage'] = str_replace("<a style='border:1px solid;display:block;float:left;font-weight:bold;margin:3px;padding:0 3px 0 6px;text-decoration:none;' href=\"javascript:void(0)\"","<a style='color:Wheat;border:1px solid Wheat;display:block;float:left;font-weight:bold;margin:3px;padding:0 3px 0 6px;text-decoration:none;' href=\"javascript:void(0)\"",$catalog['multipage']);;
-$i = 0;
-while ($line = $db->fetch_array($query))
-{	
-	$line['url'] = $site_fullpath."/a".$line['title_id']."~".xgateway::seo_url_utf($line['title_title']).".html";
-	$line['title_tip'] = htmlspecialchars($line['title_title']);
-	$line['content'] = trim(xgateway::cutstr(strip_tags(file_get_contents("xdata/".$line['title_cid']."/".$line['title_id'].".x")),200))."...";
-	$value[] = $line;
-	$i = $i+1;
+$curpage = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$offset = ($curpage - 1) * $perpage;
+
+// Fetch category info
+$catalog = $db->query(
+    "SELECT * FROM `".DB_TABLE_PREFIX."catalog` WHERE catalog_id = :cid LIMIT 1",
+    ['cid' => $cid]
+);
+$catalog = $catalog[0] ?? [];
+
+$where = 'WHERE title_cid = :cid';
+$articles = $db->query(
+    "SELECT * FROM `".DB_TABLE_PREFIX."title` $where ORDER BY title_date DESC LIMIT $offset,$perpage",
+    ['cid' => $cid]
+);
+$totalRows = $db->query("SELECT COUNT(*) as cnt FROM `".DB_TABLE_PREFIX."title` $where", ['cid' => $cid]);
+$total = $totalRows[0]['cnt'] ?? 0;
+
+$catalog['multipage'] = xgateway::multi($total, $perpage, $curpage, '/');
+$catalog['multipage'] = preg_replace("|/\?page=(\d+)|", $site['surl']."/c$cid-p$1.html", $catalog['multipage']);
+$catalog['multipage'] = str_replace('<a ', "<a style='border:1px solid;display:block;float:left;font-weight:bold;margin:3px;padding:0 3px 0 6px;text-decoration:none;' ", $catalog['multipage']);
+$catalog['multipage'] = str_replace("<a style='border:1px solid;display:block;float:left;font-weight:bold;margin:3px;padding:0 3px 0 6px;text-decoration:none;' href=\"javascript:void(0)\"", "<a style='color:Wheat;border:1px solid Wheat;display:block;float:left;font-weight:bold;margin:3px;padding:0 3px 0 6px;text-decoration:none;' href=\"javascript:void(0)\"", $catalog['multipage']);
+
+$value = [];
+foreach ($articles as $line) {
+    $line['url'] = $site['surl'] . "/a" . $line['title_id'] . "~" . xgateway::seo_url_utf($line['title_title']) . ".html";
+    $line['title_tip'] = htmlspecialchars($line['title_title'], ENT_QUOTES, 'UTF-8');
+    $file = "xdata/" . $line['title_cid'] . "/" . $line['title_id'] . ".x";
+    $line['content'] = is_file($file) ? trim(xgateway::cutstr(strip_tags(file_get_contents($file)), 200)) . "..." : '';
+    $value[] = $line;
 }
-$db->close();
-$site['title'] = $site_name." &raquo; ".$catalog['catalog_name']; 
-if($_GET['page'] > 1) $site['title'] = $site_name." &raquo; ".$catalog['catalog_name'] ." &raquo; Page - ".htmlspecialchars($_GET['page']); 
+
+$site['title'] = $site_name . ' &raquo; ' . ($catalog['catalog_name'] ?? '');
+if ($curpage > 1) {
+    $site['title'] .= ' &raquo; Page - ' . $curpage;
+}
 
 $smarty->assign('site', $site);
 $smarty->assign('catalog', $catalog);
